@@ -1,86 +1,172 @@
-# Robust Traffic Severity Prediction Across Cities
+# Geographic Generalization in Traffic Severity Prediction
 
-A machine learning project focused on **geographic generalization** in accident severity prediction.
+A machine learning project investigating **geographic generalization** in traffic accident severity prediction.
 
-Instead of optimizing for in-sample performance, this project evaluates whether a model trained on multiple U.S. cities can generalize to a **fully unseen city** (Boston, MA) and remain robust under later temporal shift.
+Rather than optimizing performance on random train/test splits, this project evaluates whether a model trained on multiple U.S. cities can accurately predict accident severity in a **completely unseen city** while remaining robust under later temporal distribution shift.
 
-## Overview
+---
 
-The goal of this project is to test whether accident severity models can transfer across cities with different road infrastructure, traffic patterns, and reporting practices.
+## Motivation
 
-Rather than maximizing performance on random train/test splits, the project is designed around a harder and more realistic question:
+Many accident prediction studies evaluate models using random train/test splits, allowing location-specific patterns to leak into both training and evaluation.
 
-> Can a model trained on one set of cities still perform well in a geographically unseen city?
+While this often produces impressive metrics, it does not answer an important deployment question:
 
-## Why this project is different
+> **Can a model trained in one set of cities generalize to a city it has never seen before?**
 
-- **Geographic holdout evaluation:** Boston is fully excluded from training and used only for final testing.
-- **Leakage-resistant design:** High-cardinality location identifiers and post-accident features are removed.
-- **Robustness focus:** The model is also tested on later Boston data (2019–2023) to assess temporal stability under distribution shift.
+This project addresses that question using a geographically disjoint evaluation protocol designed to measure real-world robustness rather than in-sample accuracy.
 
-## Technical Approach
+---
 
-### 1. Data Processing
+## Key Features
 
-- **Data audit:** Removed ~102k duplicated accident reports and examined missingness, label stability, and temporal drift.
-- **Label stabilization:** Restricted modeling to 2016–2018 due to structural severity drift in later years.
-- **Feature engineering:**
-  - Derived `Speed_Class` (High / Medium / Low) from street names to capture road type without memorizing locations
-  - Engineered cyclical time features and weekend indicators
-  - Used weather and infrastructure variables with stable cross-city behavior
-- **Generalization strategy:**
-  - Removed high-cardinality geographic identifiers (e.g., street names, coordinates)
-  - Excluded post-accident variables to prevent leakage
-  - Applied grouped cross-validation by city
+- Geographic holdout evaluation
+- Leakage-resistant feature engineering
+- Group-based cross validation
+- Temporal robustness evaluation
+- Threshold optimization for deployment
+- Interpretable baseline and gradient-boosted models
 
-### 2. Modeling
+---
 
-- **Models:** Logistic Regression (interpretable baseline) and XGBoost (non-linear benchmark)
-- **Validation:** GroupKFold by city
-- **Final evaluation:** Boston fully held out for geographic generalization testing
-- **Metrics:** ROC-AUC, PR-AUC, F1, Recall
-- **Threshold optimization:** Adjusted the classification threshold to better reflect deployment class prevalence
+## Evaluation Strategy
 
-## Key Results
+The evaluation intentionally mimics a real deployment scenario.
 
-## Key Results
+```text
+Training Cities
+        │
+        ▼
+ Feature Engineering
+        │
+        ▼
+ GroupKFold Validation
+        │
+        ▼
+ Model Selection
+        │
+        ▼
+ Boston Holdout Test
+        │
+        ▼
+ Temporal Robustness Test
+```
 
-| Evaluation Setting | ROC-AUC | PR-AUC | F1-score | Recall |
+Boston is **never observed during training** and serves exclusively as the final evaluation city.
+
+The selected model is then evaluated on later Boston data (2019–2023) to measure robustness under temporal distribution shift.
+
+---
+
+## Methodology
+
+### Data Processing
+
+- Removed approximately **102,000** duplicate accident records.
+- Audited missing values, label stability, and temporal drift.
+- Restricted model development to **2016–2018** after identifying structural changes in severity labels.
+- Engineered cyclical temporal features and weekend indicators.
+- Derived a generalized `Speed_Class` feature from road characteristics.
+- Retained weather and infrastructure variables expected to generalize across cities.
+
+### Leakage Prevention
+
+To encourage geographic transferability, the model excludes:
+
+- Street names
+- GPS coordinates
+- High-cardinality location identifiers
+- Post-accident variables
+
+Evaluation uses **GroupKFold by city**, preventing observations from the same city from appearing in both training and validation folds.
+
+---
+
+## Models
+
+Two complementary models were evaluated:
+
+- Logistic Regression (interpretable baseline)
+- XGBoost (non-linear benchmark)
+
+Performance was measured using:
+
+- ROC-AUC
+- PR-AUC
+- F1-score
+- Recall
+
+The final decision threshold was optimized to better reflect deployment class prevalence.
+
+---
+
+## Results
+
+| Evaluation | ROC-AUC | PR-AUC | F1 | Recall |
 |---|---:|---:|---:|---:|
-| **Boston Holdout (unseen city, 2016–2018)** | **0.801** | **0.688** | **0.721** | **0.776** |
-| **Boston Temporal Robustness (2019–2023)** | **0.790** | — | — | **0.730** |
+| Boston Holdout (2016–2018) | **0.801** | **0.688** | **0.721** | **0.776** |
+| Boston Temporal Robustness (2019–2023) | **0.790** | — | — | **0.730** |
 
-The model maintains strong performances when transferred to a geographically unseen city and remains relatively stable under later temporal distribution shift.
+The selected model maintained strong predictive performance when transferred to a geographically unseen city while remaining relatively stable under later temporal distribution shift.
+
+---
 
 ## Project Structure
 
 ```text
 ├── data/
-│   ├── raw/                # Original traffic accident dataset
-│   └── preprocessed/       # Processed data ready for modeling
-├── models/                 # Serialized model artifacts
+│   ├── raw/
+│   └── preprocessed/
+├── models/
 ├── notebooks/
-│   ├── 01_data_audit.ipynb # Data cleaning, checks, and assumptions
-│   └── 02_modeling.ipynb   # Feature engineering, modeling, and evaluation
+│   ├── 01_data_audit.ipynb
+│   └── 02_modeling.ipynb
 └── scripts/
-    └── preprocess.py       # Preprocessing pipeline
+    └── preprocess.py
 ```
 
-## How to Run
-### Preprocess the raw data
+---
+
+## Reproducing the Project
+
+### Preprocess the dataset
 
 ```bash
 python scripts/preprocess.py
 ```
 
-### Optional preprocessing flags
+### Optional preprocessing
 
 ```bash
 python scripts/preprocess.py --post --boston
 ```
 
-### Explore and reproduce modeling results
+### Train and evaluate
 
-Use the notebooks in `notebooks/`:
-- `01_data_audit.ipynb` for data cleaning and assumptions
-- `02_modeling.ipynb` for feature engineering, training, and evaluation
+Use the notebooks:
+
+- `01_data_audit.ipynb`
+- `02_modeling.ipynb`
+
+to reproduce the complete feature engineering, model training, and evaluation pipeline.
+
+---
+
+## Tech Stack
+
+- Python
+- Pandas
+- NumPy
+- Scikit-learn
+- XGBoost
+- Matplotlib
+
+---
+
+## Future Work
+
+- Spatial graph features
+- Road network embeddings
+- Cross-state evaluation
+- Probability calibration
+- SHAP-based model interpretation
