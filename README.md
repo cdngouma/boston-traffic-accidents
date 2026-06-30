@@ -161,12 +161,3 @@ to reproduce the complete feature engineering, model training, and evaluation pi
 - XGBoost
 - Matplotlib
 
----
-
-## Future Work
-
-- Spatial graph features
-- Road network embeddings
-- Cross-state evaluation
-- Probability calibration
-- SHAP-based model interpretation
